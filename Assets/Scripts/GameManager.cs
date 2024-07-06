@@ -25,6 +25,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Transform ballContainer;
     [SerializeField] private Transform waitingContainer;
     [SerializeField] private Transform targetContainer;
+    private float cellSize = 1.5f; // Scale factor for cell size
     void Start()
     {
         CreateGrid();
@@ -42,7 +43,7 @@ public class GameManager : MonoBehaviour
         {
             for (int col = 0; col < columns; col++)
             {
-                Vector3 position = new Vector3(col, 0, row);
+                Vector3 position = new Vector3(col * cellSize, 0, row * cellSize);
                 GameObject cell = Instantiate(gridCellPrefab, position, Quaternion.identity, ballContainer);
                 grid[row, col] = cell.GetComponent<GridCell>();
                 grid[row, col].Initialize(row, col);
@@ -57,7 +58,7 @@ public class GameManager : MonoBehaviour
         {
             for (int col = 0; col < destinationColumns; col++)
             {
-                Vector3 position = new Vector3(col + destinationOffset.x, 0, row + destinationOffset.y);
+                Vector3 position = new Vector3((col + destinationOffset.x) * cellSize, 0, (row + destinationOffset.y) * cellSize);
                 GameObject cell = Instantiate(gridCellPrefab, position, Quaternion.identity, targetContainer);
                 destinationGrid[row, col] = cell.GetComponent<GridCell>();
                 destinationGrid[row, col].Initialize(row, col);
@@ -72,7 +73,7 @@ public class GameManager : MonoBehaviour
         {
             for (int col = 0; col < waitingColumns; col++)
             {
-                Vector3 position = new Vector3(col + waitingOffset.x, 0, row + waitingOffset.y);
+                Vector3 position = new Vector3((col + waitingOffset.x) * cellSize, 0, (row + waitingOffset.y) * cellSize);
                 GameObject cell = Instantiate(gridCellPrefab, position, Quaternion.identity, waitingContainer);
                 waitingGrid[row, col] = cell.GetComponent<GridCell>();
                 waitingGrid[row, col].Initialize(row, col);
@@ -113,7 +114,7 @@ public class GameManager : MonoBehaviour
             availablePositions.RemoveAt(randomPositionIndex);
 
             //PlaceBall(positionToPlace.x, positionToPlace.y, colorToPlace);
-            PlaceBall(destinationGrid[positionToPlace.x, positionToPlace.y], positionToPlace.x, positionToPlace.y, colorToPlace);
+            PlaceDestinationBall(destinationGrid[positionToPlace.x, positionToPlace.y], positionToPlace.x, positionToPlace.y, colorToPlace);
         }
 
     }
@@ -154,17 +155,18 @@ public class GameManager : MonoBehaviour
 
     void PlaceBall(int row, int col, COLOR color)
     {
-        Vector3 position = new Vector3(col, 0.5f, row);
+        Vector3 position = new Vector3(col * cellSize, 0.5f, row * cellSize);
         GameObject ball = Instantiate(ballPrefab, position, Quaternion.identity, ballContainer);
         BallController ballController = ball.GetComponent<BallController>();
         ballController.SetColor(color);
         grid[row, col].SetBall(ballController);
     }
-    void PlaceBall(GridCell gridCell, int row, int col, COLOR color)
+    void PlaceDestinationBall(GridCell gridCell, int row, int col, COLOR color)
     {
         Vector3 position = new Vector3(col, 0.5f, row);
         GameObject ball = Instantiate(ballPrefab, position, Quaternion.identity, ballContainer);
         BallController ballController = ball.GetComponent<BallController>();
+        ballController.IsDisabled = true;
         ballController.SetColor(color);
         gridCell.SetBall(ballController);
         ball.transform.position = gridCell.transform.position + Vector3.up * 0.5f;
@@ -232,7 +234,7 @@ public class GameManager : MonoBehaviour
         return null;
     }
 
-    public bool IsColorMatch(COLOR colorToCheck)
+    public GridCell GetColorMatch(COLOR colorToCheck)
     {
         for (int col = 0; col < destinationColumns; col++)
         {
@@ -246,10 +248,10 @@ public class GameManager : MonoBehaviour
                     //delete ball
                     ShiftDestinationColumn(col);
                 }
-                return true;
+                return cell;
             }
         }
-        return false;
+        return null;
     }
 
     public void ShiftDestinationColumn(int col)

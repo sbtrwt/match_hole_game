@@ -9,6 +9,10 @@ public class BallController : MonoBehaviour, IPointerClickHandler
     private GameManager gameManager;
     [SerializeField] private COLOR color;
     private MeshRenderer renderer;
+    public bool IsDisabled ;
+    private bool isMoving = false;
+    private Vector3 targetPosition;
+    private float moveSpeed = 5f;
     void Start()
     {
         renderer = GetComponent<MeshRenderer>();
@@ -17,7 +21,18 @@ public class BallController : MonoBehaviour, IPointerClickHandler
         ChangeMeshColors(GetColor(color));
 
     }
-
+    void Update()
+    {
+        if (isMoving)
+        {
+            transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * moveSpeed);
+            if (Vector3.Distance(transform.position, targetPosition) < 0.01f)
+            {
+                transform.position = targetPosition;
+                isMoving = false;
+            }
+        }
+    }
     public void SetCurrentCell(GridCell cell)
     {
         currentCell = cell;
@@ -25,6 +40,8 @@ public class BallController : MonoBehaviour, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
+        if (IsDisabled) return;
+
         Debug.Log("Ball clicked"); // Log to ensure click is registered
         if (currentCell == null || gameManager == null)
         {
@@ -34,22 +51,24 @@ public class BallController : MonoBehaviour, IPointerClickHandler
 
         Vector2Int start = new Vector2Int(currentCell.row, currentCell.column);
         Vector2Int[] targets = new Vector2Int[] { new Vector2Int(0, 0), new Vector2Int(0, 1), new Vector2Int(0, 2) };
-
+        
         foreach (var target in targets)
         {
             if (gameManager.IsPathAvailable(start, target))
             {
                 Debug.Log("Path available to " + target); // Log to ensure path is found
-                if (gameManager.IsColorMatch(color)) 
+                GridCell matchedCell = gameManager.GetColorMatch(color);
+                if (matchedCell != null) 
                 {
-                    Destroy(gameObject);
+                    //Destroy(gameObject);
+                    MoveToTarget(matchedCell, true);
                 }
                 else
                 {
                     GridCell targetGridCell = gameManager.GetAvailableWaitingGridCell();
                     if (targetGridCell != null)
                     {
-                        MoveToTarget(targetGridCell);
+                        MoveToTarget(targetGridCell, false);
                     }
                 }
                 
@@ -58,14 +77,20 @@ public class BallController : MonoBehaviour, IPointerClickHandler
         }
     }
 
-    private void MoveToTarget(GridCell targetCell)
+    private void MoveToTarget(GridCell targetCell, bool destroyOnReach)
     {
-        //GridCell targetCell = gameManager.GetGridCell(target.x, target.y);
+        
+        currentCell.ClearBall();
         if (targetCell.IsEmpty())
         {
-            currentCell.ClearBall();
             targetCell.SetBall(this);
-            transform.position = targetCell.transform.position + Vector3.up * 0.5f;
+        }
+        targetPosition = targetCell.transform.position + Vector3.up * 0.5f;
+        isMoving = true;
+        
+        if (destroyOnReach)
+        {
+            Destroy(gameObject, Vector3.Distance(transform.position, targetPosition) / moveSpeed);
         }
     }
 
